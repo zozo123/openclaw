@@ -422,12 +422,14 @@ export function createPinnedDispatcher(
   if (!policy || policy.mode === "direct") {
     return createHttp1Agent({
       connect: withPinnedLookup(lookup, policy?.connect),
+      allowH2: false,
     });
   }
 
   if (policy.mode === "env-proxy") {
     return createHttp1EnvHttpProxyAgent({
       connect: withPinnedLookup(lookup, policy.connect),
+      allowH2: false,
       ...(policy.proxyTls ? { proxyTls: { ...policy.proxyTls } } : {}),
     });
   }
@@ -439,6 +441,7 @@ export function createPinnedDispatcher(
   }
   return createHttp1ProxyAgent({
     uri: proxyUrl,
+    allowH2: false,
     // `PinnedDispatcherPolicy.proxyTls` historically carried target-hop
     // transport hints for explicit proxies. Translate that to undici's
     // `requestTls` so HTTPS proxy tunnels keep the pinned DNS lookup.

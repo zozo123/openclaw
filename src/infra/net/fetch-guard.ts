@@ -118,6 +118,7 @@ function createPolicyDispatcherWithoutPinnedDns(
   if (dispatcherPolicy.mode === "env-proxy") {
     return createHttp1EnvHttpProxyAgent({
       ...(dispatcherPolicy.connect ? { connect: { ...dispatcherPolicy.connect } } : {}),
+      allowH2: false,
       ...(dispatcherPolicy.proxyTls ? { proxyTls: { ...dispatcherPolicy.proxyTls } } : {}),
     });
   }
@@ -126,6 +127,7 @@ function createPolicyDispatcherWithoutPinnedDns(
   return dispatcherPolicy.proxyTls
     ? createHttp1ProxyAgent({
         uri: proxyUrl,
+        allowH2: false,
         requestTls: { ...dispatcherPolicy.proxyTls },
       })
     : createHttp1ProxyAgent({ uri: proxyUrl });
