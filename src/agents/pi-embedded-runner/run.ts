@@ -1467,6 +1467,7 @@ export async function runEmbeddedPiAgent(
             payloadCount: payloads.length,
             aborted,
             timedOut,
+            silentExpected: params.silentExpected,
             attempt,
           });
           const nextPlanningOnlyRetryInstruction = resolvePlanningOnlyRetryInstruction({

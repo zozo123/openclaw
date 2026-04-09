@@ -15,6 +15,7 @@ type IncompleteTurnAttempt = Pick<
   | "lastToolError"
   | "lastAssistant"
   | "replayMetadata"
+  | "didSendViaMessagingTool"
 >;
 
 type PlanningOnlyAttempt = Pick<
@@ -103,6 +104,7 @@ export function resolveIncompleteTurnPayloadText(params: {
   payloadCount: number;
   aborted: boolean;
   timedOut: boolean;
+  silentExpected?: boolean;
   attempt: IncompleteTurnAttempt;
 }): string | null {
   if (
@@ -112,19 +114,32 @@ export function resolveIncompleteTurnPayloadText(params: {
     params.attempt.clientToolCall ||
     params.attempt.yieldDetected ||
     params.attempt.didSendDeterministicApprovalPrompt ||
-    params.attempt.lastToolError
+    params.attempt.lastToolError ||
+    params.attempt.didSendViaMessagingTool
   ) {
     return null;
   }
 
   const stopReason = params.attempt.lastAssistant?.stopReason;
-  if (stopReason !== "toolUse" && stopReason !== "error") {
-    return null;
+  if (stopReason === "toolUse" || stopReason === "error") {
+    return params.attempt.replayMetadata.hadPotentialSideEffects
+      ? "⚠️ Agent couldn't generate a response. Note: some tool actions may have already been executed — please verify before retrying."
+      : "⚠️ Agent couldn't generate a response. Please try again.";
   }
 
-  return params.attempt.replayMetadata.hadPotentialSideEffects
-    ? "⚠️ Agent couldn't generate a response. Note: some tool actions may have already been executed — please verify before retrying."
-    : "⚠️ Agent couldn't generate a response. Please try again.";
+  // Detect model returning a valid stop reason (e.g. "stop" or "end_turn") but
+  // producing no content — seen with some providers (DeepSeek, custom-api) where
+  // the model occasionally emits content:[] with usage.totalTokens=0. Without
+  // this guard the turn silently produces no reply to the user.
+  if (
+    !params.silentExpected &&
+    params.attempt.lastAssistant != null &&
+    (stopReason === "stop" || stopReason === "end_turn")
+  ) {
+    return "The model completed but produced no response. Please try again.";
+  }
+
+  return null;
 }
 
 function shouldApplyPlanningOnlyRetryGuard(params: {
