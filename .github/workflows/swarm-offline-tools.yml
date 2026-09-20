@@ -1,0 +1,55 @@
+name: Split public Swarm qualification artifacts
+on:
+  push:
+    branches: [chore/swarm-offline-tools-20260920]
+permissions:
+  actions: read
+  contents: read
+jobs:
+  split:
+    if: github.repository == 'zozo123/openclaw'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch the already captured public toolchain
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: swarm-qualification
+          run-id: 35514409283
+          github-token: ${{ github.token }}
+          path: captured
+      - name: Split below connector size limits
+        run: |
+          mkdir -p parts
+          split -b 240M -d captured/public-dependencies.tar.zst parts/dependencies-
+          sha256sum captured/public-dependencies.tar.zst > captured/dependencies-sha256.txt
+          rm captured/public-dependencies.tar.zst
+      - name: Upload test evidence and Node binary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: swarm-test-evidence
+          path: captured/
+          retention-days: 3
+          compression-level: 0
+      - name: Upload dependency chunk zero
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: swarm-dependencies-0
+          path: parts/dependencies-00
+          retention-days: 3
+          compression-level: 0
+      - name: Upload dependency chunk one
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: swarm-dependencies-1
+          path: parts/dependencies-01
+          retention-days: 3
+          compression-level: 0
+      - name: Upload dependency chunk two
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: swarm-dependencies-2
+          path: parts/dependencies-02
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
