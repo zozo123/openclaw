@@ -23,7 +23,6 @@ jobs:
         run: |
           mkdir -p .artifacts/swarm-qualification
           git rev-parse HEAD > .artifacts/swarm-qualification/commit.txt
-          git archive --format=tar HEAD | zstd -T0 -3 -o .artifacts/swarm-qualification/source.tar.zst
       - name: Install repository-pinned toolchain
         uses: ./.github/actions/setup-node-env
         with:
@@ -45,29 +44,23 @@ jobs:
         id: tests
         continue-on-error: true
         run: |
-          node scripts/run-vitest.mjs src/agents/subagents/swarm/dynamics src/agents/code-mode-swarm.dynamics.test.ts > .artifacts/swarm-qualification/tests.txt 2>&1
+          node scripts/run-vitest.mjs src/agents/subagents/swarm/dynamics/*.test.ts src/agents/code-mode-swarm.dynamics.test.ts > .artifacts/swarm-qualification/tests.txt 2>&1
       - name: Check changed source lint
         id: lint
         continue-on-error: true
         run: |
-          pnpm exec oxlint src/agents/subagents/swarm/dynamics src/agents/code-mode-swarm.runtime.ts src/agents/code-mode-swarm.dynamics.test.ts > .artifacts/swarm-qualification/lint.txt 2>&1
-      - name: Capture public pinned tooling for reproducible local repair
+          node scripts/run-oxlint.mjs src/agents/subagents/swarm/dynamics src/agents/code-mode-swarm.runtime.ts src/agents/code-mode-swarm.dynamics.test.ts > .artifacts/swarm-qualification/lint.txt 2>&1
+      - name: Capture public pinned dependencies for offline qualification
         if: always()
         run: |
           if test -d node_modules; then
-            python3 - <<'PY'
-          import glob, os, tarfile
-          roots = []
-          patterns = ['oxfmt@*', '@oxfmt+*', 'oxlint@*', '@oxlint+*', 'typescript@*', '@types+node@*', 'undici-types@*']
-          for pattern in patterns:
-              roots.extend(glob.glob('node_modules/.pnpm/' + pattern))
-          with tarfile.open('.artifacts/swarm-qualification/public-tooling.tar.gz', 'w:gz') as archive:
-              for root in sorted(set(roots)):
-                  archive.add(root, recursive=True)
-          PY
+            find node_modules packages extensions ui -type d -name node_modules -prune -print0 > "$RUNNER_TEMP/module-roots"
+            tar --null -T "$RUNNER_TEMP/module-roots" -cf - | zstd -T0 -3 -o .artifacts/swarm-qualification/public-dependencies.tar.zst
           fi
+          cp "$(command -v node)" .artifacts/swarm-qualification/node
+          node -v > .artifacts/swarm-qualification/node-version.txt
           printf 'format=%s\ntests=%s\nlint=%s\n' '${{ steps.format.outcome }}' '${{ steps.tests.outcome }}' '${{ steps.lint.outcome }}' > .artifacts/swarm-qualification/outcomes.txt
-      - name: Upload exact source and qualification evidence
+      - name: Upload qualification evidence and public dependencies
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -75,6 +68,7 @@ jobs:
           path: .artifacts/swarm-qualification/
           retention-days: 3
           if-no-files-found: error
+          compression-level: 0
       - name: Enforce recorded results
         if: always()
         env:
