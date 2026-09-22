@@ -33,8 +33,35 @@ function configuredBaseUrl(ctx: ProviderCatalogContext): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim().replace(/\/+$/, "") : undefined;
 }
 
+function buildDatabricksRuntimeModel(
+  modelId: string,
+  baseUrl: string,
+): ProviderRuntimeModel {
+  const model = buildDatabricksModelDefinition(modelId);
+  const input = (model.input ?? ["text"]).filter(
+    (kind): kind is "text" | "image" => kind === "text" || kind === "image",
+  );
+  return {
+    id: model.id,
+    name: model.name ?? model.id,
+    provider: DATABRICKS_PROVIDER_ID,
+    api: "openai-completions",
+    baseUrl,
+    reasoning: model.reasoning ?? false,
+    input: input.length > 0 ? input : ["text"],
+    cost: model.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: model.contextWindow ?? 128000,
+    ...(model.contextTokens !== undefined ? { contextTokens: model.contextTokens } : {}),
+    maxTokens: model.maxTokens ?? 8192,
+    ...(model.compat ? { compat: model.compat } : {}),
+    ...(model.params ? { params: model.params } : {}),
+  };
+}
+
 async function resolveHostInteractive(ctx: ProviderAuthContext): Promise<string> {
-  const fromEnv = normalizeDatabricksHost(normalizeOptionalString(ctx.env[HOST_ENV_VAR]));
+  const fromEnv = normalizeDatabricksHost(
+    normalizeOptionalString((ctx.env ?? process.env)[HOST_ENV_VAR]),
+  );
   if (fromEnv) {
     return fromEnv;
   }
@@ -62,7 +89,7 @@ async function runInteractive(ctx: ProviderAuthContext) {
     tokenProvider: normalizeOptionalSecretInput(ctx.opts?.databricksToken)
       ? DATABRICKS_PROVIDER_ID
       : normalizeOptionalSecretInput(ctx.opts?.tokenProvider),
-    env: ctx.env,
+    env: ctx.env ?? process.env,
     expectedProviders: [DATABRICKS_PROVIDER_ID],
     provider: DATABRICKS_PROVIDER_ID,
     envLabel: TOKEN_ENV_VAR,
@@ -87,7 +114,7 @@ async function runInteractive(ctx: ProviderAuthContext) {
 }
 
 async function runNonInteractive(ctx: ProviderAuthMethodNonInteractiveContext) {
-  const host = normalizeDatabricksHost(normalizeOptionalString(ctx.env[HOST_ENV_VAR]));
+  const host = normalizeDatabricksHost(normalizeOptionalString(process.env[HOST_ENV_VAR]));
   if (!host) {
     ctx.runtime.error(
       "Databricks setup requires DATABRICKS_HOST to be set to the workspace URL.",
@@ -166,19 +193,10 @@ export default definePluginEntry({
           };
         },
       },
-      resolveDynamicModel: (ctx): ProviderRuntimeModel | undefined => {
+      resolveDynamicModel: (ctx) => {
         const baseUrl =
-          ctx.providerConfig?.baseUrl ??
-          resolveDatabricksBaseUrl(process.env[HOST_ENV_VAR]);
-        if (!baseUrl) {
-          return undefined;
-        }
-        return {
-          ...buildDatabricksModelDefinition(ctx.modelId),
-          provider: DATABRICKS_PROVIDER_ID,
-          api: "openai-completions",
-          baseUrl,
-        };
+          ctx.providerConfig?.baseUrl ?? resolveDatabricksBaseUrl(process.env[HOST_ENV_VAR]);
+        return baseUrl ? buildDatabricksRuntimeModel(ctx.modelId, baseUrl) : undefined;
       },
       ...buildProviderReplayFamilyHooks({ family: "openai-compatible" }),
     });
