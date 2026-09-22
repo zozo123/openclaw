@@ -1,14 +1,14 @@
 import type { ModelDefinitionConfig } from "openclaw/plugin-sdk/provider-model-shared";
 
 export const DATABRICKS_PROVIDER_ID = "databricks";
-export const DATABRICKS_DEFAULT_MODEL_ID = "system.ai.claude-sonnet-4-5";
+const DATABRICKS_DEFAULT_MODEL_ID = "system.ai.claude-sonnet-4-5";
 export const DATABRICKS_DEFAULT_MODEL_REF = `${DATABRICKS_PROVIDER_ID}/${DATABRICKS_DEFAULT_MODEL_ID}`;
 
 const DEFAULT_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
 export const DATABRICKS_MODEL_CATALOG: ModelDefinitionConfig[] = [
   {
-    id: "system.ai.claude-sonnet-4-5",
+    id: DATABRICKS_DEFAULT_MODEL_ID,
     name: "Claude Sonnet 4.5 (Databricks)",
     reasoning: true,
     input: ["text", "image"],
