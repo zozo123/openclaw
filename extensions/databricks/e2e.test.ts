@@ -122,6 +122,9 @@ describe("databricks provider end-to-end", () => {
         throw new Error("Databricks onboarding returned no config");
       }
       expect(onboarded.models?.providers?.existing).toEqual(existingProvider);
+      expect(onboarded.agents?.defaults?.model).toMatchObject({
+        primary: "databricks/system.ai.claude-sonnet-4-5",
+      });
       expect(onboarded.agents?.defaults?.models?.["existing/model"]).toEqual({ alias: "Keep me" });
       const productionBaseUrl = onboarded.models?.providers?.databricks?.baseUrl;
       expect(productionBaseUrl).toBe("https://dbc-e2e.cloud.databricks.com/ai-gateway/mlflow/v1");
