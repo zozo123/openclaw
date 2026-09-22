@@ -92,6 +92,41 @@ describe("databricks provider plugin", () => {
     );
   });
 
+  it("selects the Databricks default on fresh registered non-interactive setup", async () => {
+    const auth = registerProvider().auth[0];
+    if (!auth?.runNonInteractive) {
+      throw new Error("expected Databricks non-interactive auth method");
+    }
+    vi.stubEnv("DATABRICKS_HOST", "https://dbc-example.cloud.databricks.com/");
+    const agentDir = mkdtempSync(join(tmpdir(), "openclaw-databricks-fresh-auth-"));
+
+    try {
+      const result = await auth.runNonInteractive({
+        authChoice: "databricks-token",
+        config: {},
+        baseConfig: {},
+        opts: { databricksToken: "test-token" },
+        runtime: createRuntimeEnv(),
+        agentDir,
+        resolveApiKey: async () => ({ key: "test-token", source: "flag" }),
+        toApiKeyCredential: ({ provider, resolved }) => ({
+          type: "api_key",
+          provider,
+          key: resolved.key,
+        }),
+      });
+
+      expect(result?.agents?.defaults?.model).toMatchObject({
+        primary: DATABRICKS_DEFAULT_MODEL_REF,
+      });
+      expect(result?.models?.providers?.databricks?.baseUrl).toBe(
+        "https://dbc-example.cloud.databricks.com/ai-gateway/mlflow/v1",
+      );
+    } finally {
+      rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
+
   it("runs registered non-interactive auth from DATABRICKS_HOST and preserves existing config", async () => {
     const auth = registerProvider().auth[0];
     if (!auth?.runNonInteractive) {
@@ -110,6 +145,7 @@ describe("databricks provider plugin", () => {
       },
       agents: {
         defaults: {
+          model: { primary: "existing/model" },
           models: {
             "existing/model": { alias: "Keep me" },
           },
@@ -137,6 +173,7 @@ describe("databricks provider plugin", () => {
         "https://dbc-example.cloud.databricks.com/ai-gateway/mlflow/v1",
       );
       expect(result?.models?.providers?.existing).toEqual(config.models?.providers?.existing);
+      expect(result?.agents?.defaults?.model).toMatchObject({ primary: "existing/model" });
       expect(result?.agents?.defaults?.models?.["existing/model"]).toEqual({ alias: "Keep me" });
     } finally {
       rmSync(agentDir, { recursive: true, force: true });
