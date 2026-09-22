@@ -129,7 +129,7 @@ export default definePluginEntry({
       id: DATABRICKS_PROVIDER_ID,
       label: "Databricks",
       docsPath: "/providers/databricks",
-      envVars: [TOKEN_ENV_VAR, HOST_ENV_VAR],
+      envVars: [TOKEN_ENV_VAR],
       auth: [
         {
           id: "api-token",
