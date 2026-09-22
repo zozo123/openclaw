@@ -33,10 +33,7 @@ function configuredBaseUrl(ctx: ProviderCatalogContext): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim().replace(/\/+$/, "") : undefined;
 }
 
-function buildDatabricksRuntimeModel(
-  modelId: string,
-  baseUrl: string,
-): ProviderRuntimeModel {
+function buildDatabricksRuntimeModel(modelId: string, baseUrl: string): ProviderRuntimeModel {
   const model = buildDatabricksModelDefinition(modelId);
   const input = (model.input ?? ["text"]).filter(
     (kind): kind is "text" | "image" => kind === "text" || kind === "image",
@@ -116,9 +113,7 @@ async function runInteractive(ctx: ProviderAuthContext) {
 async function runNonInteractive(ctx: ProviderAuthMethodNonInteractiveContext) {
   const host = normalizeDatabricksHost(normalizeOptionalString(process.env[HOST_ENV_VAR]));
   if (!host) {
-    ctx.runtime.error(
-      "Databricks setup requires DATABRICKS_HOST to be set to the workspace URL.",
-    );
+    ctx.runtime.error("Databricks setup requires DATABRICKS_HOST to be set to the workspace URL.");
     ctx.runtime.exit(1);
     return null;
   }
