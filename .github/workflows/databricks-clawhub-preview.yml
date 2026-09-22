@@ -5,6 +5,10 @@ on:
     branches:
       - databricks-provider-external
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   preview:
     uses: openclaw/clawhub/.github/workflows/package-publish.yml@v0.23.3
