@@ -10,7 +10,7 @@
     "providers": [
       {
         "id": "databricks",
-        "envVars": ["DATABRICKS_TOKEN", "DATABRICKS_HOST"]
+        "envVars": ["DATABRICKS_TOKEN"]
       }
     ]
   },
@@ -19,7 +19,6 @@
       "provider": "databricks",
       "method": "api-token",
       "choiceId": "databricks-token",
-      "appGuidedSecret": true,
       "choiceLabel": "Databricks token",
       "choiceHint": "Unity Gateway / model services",
       "groupId": "databricks",
