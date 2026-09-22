@@ -19,5 +19,6 @@ export function applyDatabricksConnectionConfig(cfg: OpenClawConfig, host: strin
     baseUrl,
     catalogModels: () => structuredClone(DATABRICKS_MODEL_CATALOG),
     aliases: [{ modelRef: DATABRICKS_DEFAULT_MODEL_REF, alias: "Databricks" }],
+    primaryModelRef: DATABRICKS_DEFAULT_MODEL_REF,
   });
 }
