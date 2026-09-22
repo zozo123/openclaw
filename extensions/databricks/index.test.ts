@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import plugin from "./index.js";
 import {
   DATABRICKS_DEFAULT_MODEL_REF,
+  DATABRICKS_MODEL_CATALOG,
   normalizeDatabricksHost,
   resolveDatabricksBaseUrl,
 } from "./models.js";
@@ -49,6 +50,16 @@ describe("databricks provider plugin", () => {
 
   it("uses a Databricks-qualified default model ref", () => {
     expect(DATABRICKS_DEFAULT_MODEL_REF).toBe("databricks/system.ai.claude-sonnet-4-5");
+  });
+
+  it("matches the documented GPT-5.6 Sol token limits", () => {
+    const model = DATABRICKS_MODEL_CATALOG.find((entry) => entry.id === "system.ai.gpt-5-6-sol");
+    expect(model).toMatchObject({
+      contextWindow: 1_050_000,
+      maxTokens: 128_000,
+      input: ["text", "image"],
+      reasoning: true,
+    });
   });
 
   it("runs registered interactive auth without an explicit env context", async () => {
