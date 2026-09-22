@@ -13,7 +13,7 @@ describe("databricks provider plugin", () => {
     const provider = captured.providers[0];
     expect(provider?.id).toBe("databricks");
     expect(provider?.label).toBe("Databricks");
-    expect(provider?.envVars).toEqual(["DATABRICKS_TOKEN", "DATABRICKS_HOST"]);
+    expect(provider?.envVars).toEqual(["DATABRICKS_TOKEN"]);
     expect(provider?.auth[0]?.id).toBe("api-token");
   });
 
