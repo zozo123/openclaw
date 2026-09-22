@@ -1,0 +1,18 @@
+name: Databricks ClawHub publish
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    permissions:
+      contents: read
+      id-token: write
+    uses: openclaw/clawhub/.github/workflows/package-publish.yml@v0.23.3
+    with:
+      source_path: extensions/databricks
+      dry_run: false
+      changelog: "Initial Databricks Unity Gateway provider release."
+      topics: "databricks,unity-gateway,model-provider"
+    secrets:
+      clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}
