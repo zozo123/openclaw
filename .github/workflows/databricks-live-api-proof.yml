@@ -1,0 +1,105 @@
+name: Databricks live API contract proof
+
+on:
+  push:
+    branches:
+      - databricks-live-proof
+
+permissions:
+  contents: read
+
+jobs:
+  api-contract:
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      DATABRICKS_MODEL: ${{ vars.DATABRICKS_MODEL }}
+    steps:
+      - name: Verify secrets
+        shell: bash
+        run: |
+          set +x
+          test -n "$DATABRICKS_HOST" || { echo "::error::DATABRICKS_HOST secret is missing"; exit 1; }
+          test -n "$DATABRICKS_TOKEN" || { echo "::error::DATABRICKS_TOKEN secret is missing"; exit 1; }
+          echo "Databricks credentials present and masked."
+
+      - name: Prove real streaming completion
+        shell: bash
+        run: |
+          set +x
+          MODEL="${DATABRICKS_MODEL:-system.ai.claude-sonnet-4-5}"
+          HOST="${DATABRICKS_HOST%/}"
+          STATUS=$(curl -sS -o /tmp/dbx-stream.txt -w "%{http_code}"             -X POST "$HOST/ai-gateway/mlflow/v1/chat/completions"             -H "Authorization: Bearer $DATABRICKS_TOKEN"             -H "Content-Type: application/json"             --data-binary @- <<JSON
+          {
+            "model": "$MODEL",
+            "stream": true,
+            "max_tokens": 64,
+            "messages": [
+              {"role": "user", "content": "Reply with exactly DATABRICKS_STREAM_OK"}
+            ]
+          }
+          JSON
+          )
+          test "$STATUS" = "200" || { echo "::error::Databricks streaming request returned HTTP $STATUS"; exit 1; }
+          grep -q "data:" /tmp/dbx-stream.txt || { echo "::error::No SSE data frames returned"; exit 1; }
+          grep -q "content" /tmp/dbx-stream.txt || { echo "::error::No streamed content returned"; exit 1; }
+          echo "real_unity_gateway_streaming=ok"
+          echo "model=$MODEL"
+
+      - name: Prove real function calling
+        shell: bash
+        run: |
+          set +x
+          MODEL="${DATABRICKS_MODEL:-system.ai.claude-sonnet-4-5}"
+          HOST="${DATABRICKS_HOST%/}"
+          STATUS=$(curl -sS -o /tmp/dbx-tool.json -w "%{http_code}"             -X POST "$HOST/ai-gateway/mlflow/v1/chat/completions"             -H "Authorization: Bearer $DATABRICKS_TOKEN"             -H "Content-Type: application/json"             --data-binary @- <<JSON
+          {
+            "model": "$MODEL",
+            "max_tokens": 128,
+            "messages": [
+              {"role": "user", "content": "Call the platinum_probe tool with marker OPENCLAW_PLATINUM. Do not answer normally."}
+            ],
+            "tools": [
+              {
+                "type": "function",
+                "function": {
+                  "name": "platinum_probe",
+                  "description": "Return a deterministic integration marker",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "marker": {"type": "string"}
+                    },
+                    "required": ["marker"],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            ],
+            "tool_choice": {
+              "type": "function",
+              "function": {"name": "platinum_probe"}
+            }
+          }
+          JSON
+          )
+          test "$STATUS" = "200" || { echo "::error::Databricks tool request returned HTTP $STATUS"; exit 1; }
+          jq -e '.choices[0].message.tool_calls[0].function.name == "platinum_probe"' /tmp/dbx-tool.json >/dev/null             || { echo "::error::Expected platinum_probe tool call not returned"; exit 1; }
+          jq -e '.choices[0].message.tool_calls[0].function.arguments | fromjson | .marker == "OPENCLAW_PLATINUM"' /tmp/dbx-tool.json >/dev/null             || { echo "::error::Expected tool arguments not returned"; exit 1; }
+          echo "real_unity_gateway_tool_call=ok"
+
+      - name: Redacted proof summary
+        shell: bash
+        run: |
+          {
+            echo "## Real Databricks Unity Gateway contract proof"
+            echo ""
+            echo "- Credential secret present: ✅ (masked)"
+            echo "- Workspace secret present: ✅ (redacted)"
+            echo "- POST /ai-gateway/mlflow/v1/chat/completions: ✅"
+            echo "- Real SSE streaming response: ✅"
+            echo "- Real forced function call: ✅"
+            echo "- Function arguments validated: ✅"
+            echo "- Token/workspace values printed: ❌"
+          } >> "$GITHUB_STEP_SUMMARY"
