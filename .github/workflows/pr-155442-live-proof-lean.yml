@@ -1,0 +1,370 @@
+name: PR 155442 real runtime proof lean
+
+on:
+  push:
+    branches:
+      - proof/pr-155442-live-lean-f7593f2
+
+permissions:
+  contents: read
+
+jobs:
+  live-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout exact proof head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.19.0"
+
+      - name: Install lean OpenClaw dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare pnpm@12.4.0 --activate
+          pnpm install --frozen-lockfile --ignore-scripts --filter openclaw...
+
+      - name: Install and start local Ollama
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve >"$RUNNER_TEMP/ollama.log" 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          tail -100 "$RUNNER_TEMP/ollama.log" >&2 || true
+          exit 1
+
+      - name: Pull real local tool-capable model
+        shell: bash
+        run: |
+          set -euo pipefail
+          ollama pull qwen3.5:9b
+          curl -fsS http://127.0.0.1:11434/api/tags | grep -F 'qwen3.5:9b' >/dev/null
+
+      - name: Build OpenClaw sandbox image
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --kill-after=30s 10m scripts/sandbox-setup.sh
+          docker image inspect openclaw-sandbox:bookworm-slim >/dev/null
+
+      - name: Prepare isolated proof config
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .proof/state .proof/workspace
+          cat > .proof/openclaw.json <<'JSON'
+          {
+            models: {
+              providers: {
+                ollama: {
+                  baseUrl: "http://127.0.0.1:11434",
+                  apiKey: "ollama-local",
+                  api: "ollama",
+                  timeoutSeconds: 300,
+                  models: [
+                    {
+                      id: "qwen3.5:9b",
+                      name: "qwen3.5:9b",
+                      reasoning: true,
+                      input: ["text"],
+                      contextTokens: 32768,
+                      params: {
+                        num_ctx: 32768,
+                        thinking: false,
+                        keep_alive: "15m"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            agents: {
+              defaults: {
+                model: { primary: "ollama/qwen3.5:9b" },
+                sandbox: {
+                  mode: "non-main",
+                  scope: "session",
+                  backend: "docker",
+                  workspaceAccess: "none",
+                  docker: {
+                    image: "openclaw-sandbox:bookworm-slim",
+                    network: "none"
+                  }
+                }
+              }
+            },
+            tools: {
+              codeMode: true,
+              swarm: true
+            }
+          }
+          JSON
+
+      - name: Run real agents.run with filtered handoff and required sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .proof/positive-prompt.txt <<'PROMPT'
+          Use OpenClaw Code Mode. Call the exec tool exactly once with the JavaScript below.
+          Do not rewrite, simulate, or explain it. After the tool completes, return its value exactly.
+
+          return await agents.run("Reply exactly CHILD_OK.", {
+            dynamics: {
+              boundary: "artifact-only",
+              requirements: {
+                sandbox: "require",
+                candidateDigest: "required",
+                artifactRefs: "required"
+              },
+              candidate: {
+                version: 1,
+                candidateDigest: "candidate:live-proof-v1",
+                sourceDigest: "source:live-proof-v1",
+                recipeDigest: "recipe:live-proof-v1",
+                policyDigest: "policy:live-proof-v1"
+              },
+              handoff: {
+                candidateDigest: "candidate:live-proof-v1",
+                artifactRefs: ["artifact:live-proof"],
+                summary: "PRIVATE_SUMMARY_MUST_NOT_CROSS"
+              }
+            }
+          });
+          PROMPT
+
+          set +e
+          pnpm openclaw agent exec \
+            --message-file .proof/positive-prompt.txt \
+            --cwd .proof/workspace \
+            --state-dir .proof/state \
+            --config .proof/openclaw.json \
+            --model ollama/qwen3.5:9b \
+            --code-mode code \
+            --timeout 600 \
+            --json \
+            > .proof/positive.json 2> .proof/positive.stderr
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "real agents.run proof failed (exit=$status)" >&2
+            tail -120 .proof/positive.stderr >&2 || true
+            exit "$status"
+          fi
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const envelope = JSON.parse(fs.readFileSync(".proof/positive.json", "utf8"));
+          const output = (envelope.payloads ?? []).map((item) => item?.text ?? "").join("\n");
+          if (!output.includes("CHILD_OK")) {
+            throw new Error("real child completion marker missing from agent exec result");
+          }
+          if (envelope?.meta?.agentMeta?.codeModeEngaged !== true) {
+            throw new Error("agent exec did not report Code Mode engagement");
+          }
+          console.log("real_parent_code_mode=true");
+          console.log("real_child_completed=true");
+          NODE
+
+      - name: Inspect live persisted launch and identity-bound replay fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > .proof/inspect-live.ts <<'TS'
+          import { createHash } from "node:crypto";
+          import { DatabaseSync } from "node:sqlite";
+          import { stableStringify } from "@openclaw/normalization-core";
+          import { prepareDynamicsSpawn } from "../src/agents/subagents/swarm/dynamics/dynamics-spawn.ts";
+
+          const stateDb = new DatabaseSync(".proof/state/state/openclaw.sqlite", { readOnly: true });
+          const rows = stateDb
+            .prepare("SELECT run_id, child_session_key, payload_json FROM subagent_runs ORDER BY rowid DESC")
+            .all() as Array<{ run_id: string; child_session_key: string; payload_json: string }>;
+          const row = rows
+            .map((item) => ({ ...item, payload: JSON.parse(item.payload_json) as Record<string, unknown> }))
+            .find((item) => typeof item.payload.swarmLaunchReplayKey === "string");
+          if (!row) throw new Error("live swarm collector record not found");
+
+          const payload = row.payload as {
+            task?: string;
+            groupId?: string;
+            swarmLaunchReplayKey?: string;
+            swarmLaunchRequestFingerprint?: string;
+            swarmLaunchPending?: boolean;
+          };
+          if (typeof payload.task !== "string") throw new Error("live prepared task missing");
+          if (!payload.task.includes("artifact:live-proof")) throw new Error("artifact handoff missing");
+          if (payload.task.includes("PRIVATE_SUMMARY_MUST_NOT_CROSS")) {
+            throw new Error("filtered summary leaked into child task");
+          }
+          if (!payload.task.includes('"sandbox":"require"')) throw new Error("sandbox requirement missing");
+          if (!payload.task.includes('"candidateDigest":"candidate:live-proof-v1"')) {
+            throw new Error("candidate binding missing");
+          }
+          if (typeof payload.groupId !== "string") throw new Error("live group id missing");
+          if (typeof payload.swarmLaunchReplayKey !== "string") throw new Error("live replay key missing");
+          if (typeof payload.swarmLaunchRequestFingerprint !== "string") {
+            throw new Error("live request fingerprint missing");
+          }
+
+          const originalDynamics = {
+            boundary: "artifact-only",
+            requirements: {
+              sandbox: "require",
+              candidateDigest: "required",
+              artifactRefs: "required",
+            },
+            candidate: {
+              version: 1,
+              candidateDigest: "candidate:live-proof-v1",
+              sourceDigest: "source:live-proof-v1",
+              recipeDigest: "recipe:live-proof-v1",
+              policyDigest: "policy:live-proof-v1",
+            },
+            handoff: {
+              candidateDigest: "candidate:live-proof-v1",
+              artifactRefs: ["artifact:live-proof"],
+              summary: "PRIVATE_SUMMARY_MUST_NOT_CROSS",
+            },
+          } as const;
+
+          const prepared = prepareDynamicsSpawn({
+            task: "Reply exactly CHILD_OK.",
+            dynamics: originalDynamics,
+            sourceReplicaId: payload.groupId,
+            targetReplicaId: payload.swarmLaunchReplayKey,
+          });
+          const expectedFingerprint =
+            "sha256:" +
+            createHash("sha256")
+              .update(stableStringify({ ...prepared, collect: true, groupId: payload.groupId }))
+              .digest("hex");
+          if (expectedFingerprint !== payload.swarmLaunchRequestFingerprint) {
+            throw new Error("persisted replay fingerprint does not match exact live prepared launch");
+          }
+
+          const changed = prepareDynamicsSpawn({
+            task: "Reply exactly CHILD_OK.",
+            dynamics: {
+              ...originalDynamics,
+              candidate: {
+                ...originalDynamics.candidate,
+                policyDigest: "policy:live-proof-v2",
+              },
+            },
+            sourceReplicaId: payload.groupId,
+            targetReplicaId: payload.swarmLaunchReplayKey,
+          });
+          const changedFingerprint =
+            "sha256:" +
+            createHash("sha256")
+              .update(stableStringify({ ...changed, collect: true, groupId: payload.groupId }))
+              .digest("hex");
+          if (changedFingerprint === payload.swarmLaunchRequestFingerprint) {
+            throw new Error("changed governing identity did not change replay fingerprint");
+          }
+
+          let sandboxProvenance = false;
+          try {
+            const agentDb = new DatabaseSync(".proof/state/agents/main/agent/openclaw-agent.sqlite", {
+              readOnly: true,
+            });
+            const session = agentDb
+              .prepare("SELECT entry_json FROM session_nodes WHERE session_key = ?")
+              .get(row.child_session_key) as { entry_json?: string } | undefined;
+            if (session?.entry_json) {
+              const entry = JSON.parse(session.entry_json) as { sandbox?: string };
+              sandboxProvenance = entry.sandbox === "required";
+            }
+          } catch {
+            // Collector cleanup may retire the child session before post-run inspection.
+          }
+
+          console.log("filtered_private_summary=true");
+          console.log("artifact_handoff_present=true");
+          console.log("candidate_binding_present=true");
+          console.log("sandbox_requirement_prepared=true");
+          console.log("sandbox_required_session_provenance=" + String(sandboxProvenance));
+          console.log("persisted_replay_fingerprint_matches_live_request=true");
+          console.log("changed_identity_changes_replay_fingerprint=true");
+          console.log("launch_pending_after_completion=" + String(payload.swarmLaunchPending === true));
+          TS
+          pnpm exec tsx .proof/inspect-live.ts
+
+      - name: Prove required sandbox fails closed when backend cannot satisfy it
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const source = fs.readFileSync(".proof/openclaw.json", "utf8");
+          const cfg = Function('"use strict"; return (' + source + ");")();
+          cfg.agents.defaults.sandbox.mode = "off";
+          cfg.agents.defaults.sandbox.docker.image = "openclaw-proof-image-that-does-not-exist";
+          fs.writeFileSync(".proof/openclaw-failclosed.json", JSON.stringify(cfg));
+          NODE
+          cat > .proof/failclosed-prompt.txt <<'PROMPT'
+          Use OpenClaw Code Mode. Call the exec tool exactly once with the JavaScript below.
+          Return the value exactly. Do not simulate it.
+
+          try {
+            const value = await agents.run("Reply exactly UNSANDBOXED_CHILD_RAN.", {
+              dynamics: {
+                boundary: "isolated",
+                requirements: { sandbox: "require" }
+              }
+            });
+            return "UNEXPECTED_SUCCESS:" + String(value);
+          } catch (error) {
+            return "EXPECTED_SANDBOX_REJECTION:" + String(error?.message ?? error);
+          }
+          PROMPT
+          set +e
+          pnpm openclaw agent exec \
+            --message-file .proof/failclosed-prompt.txt \
+            --cwd .proof/workspace \
+            --config .proof/openclaw-failclosed.json \
+            --model ollama/qwen3.5:9b \
+            --code-mode code \
+            --timeout 600 \
+            --json \
+            > .proof/failclosed.json 2> .proof/failclosed.stderr
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "fail-closed parent proof failed before returning a model result (exit=$status)" >&2
+            tail -120 .proof/failclosed.stderr >&2 || true
+            exit "$status"
+          fi
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const envelope = JSON.parse(fs.readFileSync(".proof/failclosed.json", "utf8"));
+          const output = (envelope.payloads ?? []).map((item) => item?.text ?? "").join("\n");
+          if (!output.includes("EXPECTED_SANDBOX_REJECTION:")) {
+            throw new Error("required sandbox did not return the expected rejection marker");
+          }
+          if (output.includes("UNEXPECTED_SUCCESS:") || output.includes("UNSANDBOXED_CHILD_RAN")) {
+            throw new Error("required sandbox silently downgraded to unsandboxed execution");
+          }
+          console.log("required_sandbox_fail_closed=true");
+          console.log("unsandboxed_retry_observed=false");
+          NODE
+
+      - name: Final sanitized proof summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "proof_head=${GITHUB_SHA}"
+          echo "provider=ollama/local"
+          echo "model=qwen3.5:9b"
+          echo "entrypoint=openclaw agent exec -> Code Mode exec -> agents.run -> native sessions_spawn"
+          echo "proof_result=PASS"
