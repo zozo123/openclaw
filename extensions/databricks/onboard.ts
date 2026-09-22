@@ -8,10 +8,7 @@ import {
   resolveDatabricksBaseUrl,
 } from "./models.js";
 
-export function applyDatabricksConnectionConfig(
-  cfg: OpenClawConfig,
-  host: string,
-): OpenClawConfig {
+export function applyDatabricksConnectionConfig(cfg: OpenClawConfig, host: string): OpenClawConfig {
   const baseUrl = resolveDatabricksBaseUrl(host);
   if (!baseUrl) {
     throw new Error("Invalid Databricks workspace host. Expected an HTTPS workspace URL.");
