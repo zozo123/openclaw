@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-        - name: Enable pnpm
+      - name: Enable pnpm
         run: corepack enable
       - name: Install
         run: pnpm install --frozen-lockfile
