@@ -7,11 +7,32 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   preview:
-    uses: openclaw/clawhub/.github/workflows/package-publish.yml@v0.23.3
-    with:
-      dry_run: true
-      source_path: extensions/databricks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install Bun
+        run: npm install --global bun@1.3.10
+      - name: Checkout ClawHub CLI
+        uses: actions/checkout@v6
+        with:
+          repository: openclaw/clawhub
+          ref: v0.23.3
+          path: clawhub-source
+      - name: Install ClawHub dependencies
+        working-directory: clawhub-source
+        run: bun install --frozen-lockfile
+      - name: Dry-run package publish
+        run: |
+          bun clawhub-source/packages/clawhub/src/cli.ts package publish extensions/databricks \
+            --family code-plugin \
+            --dry-run \
+            --json \
+            --source-repo zozo123/openclaw \
+            --source-commit "$GITHUB_SHA" \
+            --source-ref refs/heads/databricks-provider-external
