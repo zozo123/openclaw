@@ -22,8 +22,8 @@ export const DATABRICKS_MODEL_CATALOG: ModelDefinitionConfig[] = [
     reasoning: true,
     input: ["text", "image"],
     cost: DEFAULT_COST,
-    contextWindow: 200000,
-    maxTokens: 64000,
+    contextWindow: 1050000,
+    maxTokens: 128000,
   },
 ];
 
