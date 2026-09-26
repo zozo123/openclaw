@@ -10,8 +10,8 @@ import type { OpenClawConfig } from "openclaw/plugin-sdk/provider-onboard";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import plugin from "./index.js";
 import {
+  buildDatabricksModelDefinition,
   DATABRICKS_DEFAULT_MODEL_REF,
-  DATABRICKS_MODEL_CATALOG,
   normalizeDatabricksHost,
   resolveDatabricksBaseUrl,
 } from "./models.js";
@@ -52,13 +52,13 @@ describe("databricks provider plugin", () => {
     expect(DATABRICKS_DEFAULT_MODEL_REF).toBe("databricks/system.ai.claude-sonnet-4-5");
   });
 
-  it("matches the documented GPT-5.6 Sol token limits", () => {
-    const model = DATABRICKS_MODEL_CATALOG.find((entry) => entry.id === "system.ai.gpt-5-6-sol");
-    expect(model).toMatchObject({
-      contextWindow: 1_050_000,
-      maxTokens: 128_000,
-      input: ["text", "image"],
-      reasoning: true,
+  it("resolves uncataloged Unity model services conservatively", () => {
+    expect(buildDatabricksModelDefinition("catalog.schema.custom-service")).toMatchObject({
+      id: "catalog.schema.custom-service",
+      reasoning: false,
+      input: ["text"],
+      contextWindow: 128_000,
+      maxTokens: 8192,
     });
   });
 
