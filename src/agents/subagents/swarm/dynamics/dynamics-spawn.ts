@@ -149,10 +149,7 @@ export function prepareDynamicsSpawn(params: {
   if (
     Object.keys(options).some(
       (key) =>
-        key !== "boundary" &&
-        key !== "requirements" &&
-        key !== "handoff" &&
-        key !== "candidate",
+        key !== "boundary" && key !== "requirements" && key !== "handoff" && key !== "candidate",
     )
   ) {
     throw new Error("dynamics accepts only boundary, requirements, handoff, and candidate");
