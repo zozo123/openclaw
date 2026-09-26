@@ -21,11 +21,7 @@ Calls without `dynamics` use the existing launch path unchanged.
 ## Contract
 
 ```typescript
-type DynamicsBoundary =
-  | "isolated"
-  | "artifact-only"
-  | "evidence-only"
-  | "summary-only";
+type DynamicsBoundary = "isolated" | "artifact-only" | "evidence-only" | "summary-only";
 
 type DynamicsOptions = {
   boundary: DynamicsBoundary;
