@@ -1,6 +1,6 @@
 {
   "name": "@openclaw/databricks-provider",
-  "version": "2026.9.5",
+  "version": "2026.9.6",
   "description": "OpenClaw Databricks Unity Gateway provider plugin.",
   "repository": {
     "type": "git",
@@ -18,13 +18,13 @@
       "clawhubSpec": "clawhub:@openclaw/databricks-provider",
       "npmSpec": "@openclaw/databricks-provider",
       "defaultChoice": "npm",
-      "minHostVersion": ">=2026.9.5"
+      "minHostVersion": ">=2026.9.6"
     },
     "compat": {
-      "pluginApi": ">=2026.9.5"
+      "pluginApi": ">=2026.9.6"
     },
     "build": {
-      "openclawVersion": "2026.9.5",
+      "openclawVersion": "2026.9.6",
       "bundledDist": false
     },
     "release": {
