@@ -15,7 +15,10 @@
             "id": "amazon-bedrock",
             "name": "Amazon Bedrock",
             "docs": "/providers/bedrock",
-            "categories": ["cloud", "llm"]
+            "categories": [
+              "cloud",
+              "llm"
+            ]
           }
         ],
         "install": {
@@ -41,7 +44,10 @@
             "id": "amazon-bedrock-mantle",
             "name": "Amazon Bedrock Mantle",
             "docs": "/providers/bedrock-mantle",
-            "categories": ["cloud", "llm"]
+            "categories": [
+              "cloud",
+              "llm"
+            ]
           }
         ],
         "install": {
@@ -67,7 +73,10 @@
             "id": "anthropic-vertex",
             "name": "Anthropic Vertex",
             "docs": "/providers/models",
-            "categories": ["cloud", "llm"]
+            "categories": [
+              "cloud",
+              "llm"
+            ]
           }
         ],
         "install": {
@@ -535,6 +544,56 @@
       }
     },
     {
+      "name": "@openclaw/databricks-provider",
+      "description": "OpenClaw Databricks Unity Gateway provider plugin.",
+      "source": "official",
+      "kind": "provider",
+      "openclaw": {
+        "plugin": {
+          "id": "databricks",
+          "label": "Databricks"
+        },
+        "providers": [
+          {
+            "id": "databricks",
+            "name": "Databricks",
+            "docs": "/providers/databricks",
+            "categories": [
+              "cloud",
+              "llm"
+            ],
+            "envVars": [
+              "DATABRICKS_TOKEN"
+            ],
+            "authChoices": [
+              {
+                "method": "api-token",
+                "choiceId": "databricks-token",
+                "choiceLabel": "Databricks token",
+                "choiceHint": "Unity Gateway / model services",
+                "groupId": "databricks",
+                "groupLabel": "Databricks",
+                "groupHint": "Workspace token + model services",
+                "optionKey": "databricksToken",
+                "cliFlag": "--databricks-token",
+                "cliOption": "--databricks-token <token>",
+                "cliDescription": "Databricks personal access token or OAuth token",
+                "onboardingScopes": [
+                  "text-inference"
+                ]
+              }
+            ]
+          }
+        ],
+        "install": {
+          "clawhubSpec": "clawhub:@openclaw/databricks-provider",
+          "npmSpec": "@openclaw/databricks-provider",
+          "defaultChoice": "npm",
+          "minHostVersion": ">=2026.9.6"
+        }
+      }
+    },
+    {
       "name": "@openclaw/deepinfra-provider",
       "description": "OpenClaw DeepInfra provider plugin.",
       "source": "official",
@@ -737,10 +796,16 @@
         "providers": [
           {
             "id": "gmi",
-            "aliases": ["gmi-cloud", "gmicloud"],
+            "aliases": [
+              "gmi-cloud",
+              "gmicloud"
+            ],
             "name": "GMI Cloud",
             "docs": "/providers/gmi",
-            "categories": ["cloud", "llm"],
+            "categories": [
+              "cloud",
+              "llm"
+            ],
             "authChoices": [
               {
                 "method": "api-key",
@@ -754,7 +819,9 @@
                 "cliFlag": "--gmi-api-key",
                 "cliOption": "--gmi-api-key <key>",
                 "cliDescription": "GMI Cloud API key",
-                "onboardingScopes": ["text-inference"]
+                "onboardingScopes": [
+                  "text-inference"
+                ]
               }
             ]
           }
@@ -780,11 +847,18 @@
         "providers": [
           {
             "id": "longcat",
-            "aliases": ["meituan-longcat"],
+            "aliases": [
+              "meituan-longcat"
+            ],
             "name": "LongCat",
             "docs": "/providers/longcat",
-            "categories": ["cloud", "llm"],
-            "envVars": ["LONGCAT_API_KEY"],
+            "categories": [
+              "cloud",
+              "llm"
+            ],
+            "envVars": [
+              "LONGCAT_API_KEY"
+            ],
             "authChoices": [
               {
                 "method": "api-key",
@@ -797,7 +871,9 @@
                 "cliFlag": "--longcat-api-key",
                 "cliOption": "--longcat-api-key <key>",
                 "cliDescription": "LongCat API key",
-                "onboardingScopes": ["text-inference"]
+                "onboardingScopes": [
+                  "text-inference"
+                ]
               }
             ]
           }
@@ -823,7 +899,9 @@
         "providerEndpoints": [
           {
             "endpointClass": "meta-native",
-            "hosts": ["api.meta.ai"]
+            "hosts": [
+              "api.meta.ai"
+            ]
           }
         ],
         "providers": [
@@ -831,8 +909,13 @@
             "id": "meta",
             "name": "Meta",
             "docs": "/providers/meta",
-            "categories": ["cloud", "llm"],
-            "envVars": ["MODEL_API_KEY"],
+            "categories": [
+              "cloud",
+              "llm"
+            ],
+            "envVars": [
+              "MODEL_API_KEY"
+            ],
             "authChoices": [
               {
                 "method": "api-key",
@@ -846,7 +929,9 @@
                 "cliFlag": "--meta-api-key",
                 "cliOption": "--meta-api-key <key>",
                 "cliDescription": "Meta API key",
-                "onboardingScopes": ["text-inference"]
+                "onboardingScopes": [
+                  "text-inference"
+                ]
               }
             ]
           }
@@ -872,7 +957,9 @@
         "providerEndpoints": [
           {
             "endpointClass": "mistral-public",
-            "hosts": ["api.mistral.ai"]
+            "hosts": [
+              "api.mistral.ai"
+            ]
           }
         ],
         "providers": [
@@ -880,8 +967,13 @@
             "id": "mistral",
             "name": "Mistral",
             "docs": "/providers/mistral",
-            "categories": ["cloud", "llm"],
-            "envVars": ["MISTRAL_API_KEY"],
+            "categories": [
+              "cloud",
+              "llm"
+            ],
+            "envVars": [
+              "MISTRAL_API_KEY"
+            ],
             "authChoices": [
               {
                 "method": "api-key",
@@ -894,15 +986,23 @@
                 "cliFlag": "--mistral-api-key",
                 "cliOption": "--mistral-api-key <key>",
                 "cliDescription": "Mistral API key",
-                "onboardingScopes": ["text-inference"]
+                "onboardingScopes": [
+                  "text-inference"
+                ]
               }
             ]
           }
         ],
         "contracts": {
-          "embeddingProviders": ["mistral"],
-          "mediaUnderstandingProviders": ["mistral"],
-          "realtimeTranscriptionProviders": ["mistral"]
+          "embeddingProviders": [
+            "mistral"
+          ],
+          "mediaUnderstandingProviders": [
+            "mistral"
+          ],
+          "realtimeTranscriptionProviders": [
+            "mistral"
+          ]
         },
         "install": {
           "clawhubSpec": "clawhub:@openclaw/mistral-provider",
@@ -925,17 +1025,27 @@
         "providerEndpoints": [
           {
             "endpointClass": "novita-native",
-            "hosts": ["api.novita.ai"]
+            "hosts": [
+              "api.novita.ai"
+            ]
           }
         ],
         "providers": [
           {
             "id": "novita",
-            "aliases": ["novita-ai", "novitaai"],
+            "aliases": [
+              "novita-ai",
+              "novitaai"
+            ],
             "name": "NovitaAI",
             "docs": "/providers/novita",
-            "categories": ["cloud", "llm"],
-            "envVars": ["NOVITA_API_KEY"],
+            "categories": [
+              "cloud",
+              "llm"
+            ],
+            "envVars": [
+              "NOVITA_API_KEY"
+            ],
             "authChoices": [
               {
                 "method": "api-key",
@@ -949,7 +1059,9 @@
                 "cliFlag": "--novita-api-key",
                 "cliOption": "--novita-api-key <key>",
                 "cliDescription": "NovitaAI API key",
-                "onboardingScopes": ["text-inference"]
+                "onboardingScopes": [
+                  "text-inference"
+                ]
               }
             ]
           }
@@ -1270,7 +1382,10 @@
             "id": "pixverse",
             "name": "PixVerse",
             "docs": "/providers/pixverse",
-            "categories": ["cloud", "video"],
+            "categories": [
+              "cloud",
+              "video"
+            ],
             "authChoices": [
               {
                 "method": "api-key",
@@ -1284,7 +1399,9 @@
                 "cliFlag": "--pixverse-api-key",
                 "cliOption": "--pixverse-api-key <key>",
                 "cliDescription": "PixVerse API key",
-                "onboardingScopes": ["image-generation"]
+                "onboardingScopes": [
+                  "image-generation"
+                ]
               }
             ]
           }
