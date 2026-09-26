@@ -38,7 +38,6 @@ describe("native dynamics launch preparation", () => {
     expect(result.task).toContain("grants no authority");
   });
 
-
   it("binds the generic contract and host-owned lineage into reproducible task bytes", () => {
     const first = prepareDynamicsSpawn({ ...base, dynamics: { boundary: "isolated" } });
     expect(first).toEqual(prepareDynamicsSpawn({ ...base, dynamics: { boundary: "isolated" } }));
