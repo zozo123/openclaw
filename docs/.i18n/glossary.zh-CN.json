@@ -4954,5 +4954,9 @@
   {
     "source": "Deploy a team server",
     "target": "部署团队服务器"
+  },
+  {
+    "source": "Swarm bounded launches",
+    "target": "Swarm 有界启动"
   }
 ]
