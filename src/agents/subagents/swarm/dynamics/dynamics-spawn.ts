@@ -18,7 +18,6 @@ const DEFAULT_REQUIREMENTS: DynamicsSpawnRequirements = {
   artifactRefs: "optional",
 };
 
-
 function readRecord(value: unknown, name: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`${name} must be an object`);
@@ -156,9 +155,7 @@ export function prepareDynamicsSpawn(params: {
         key !== "candidate",
     )
   ) {
-    throw new Error(
-      "dynamics accepts only boundary, requirements, handoff, and candidate",
-    );
+    throw new Error("dynamics accepts only boundary, requirements, handoff, and candidate");
   }
 
   const boundary = readBoundary(options.boundary);
