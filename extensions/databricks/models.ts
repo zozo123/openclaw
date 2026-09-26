@@ -16,15 +16,6 @@ export const DATABRICKS_MODEL_CATALOG: ModelDefinitionConfig[] = [
     contextWindow: 200000,
     maxTokens: 64000,
   },
-  {
-    id: "system.ai.gpt-5-6-sol",
-    name: "GPT-5.6 Sol (Databricks)",
-    reasoning: true,
-    input: ["text", "image"],
-    cost: DEFAULT_COST,
-    contextWindow: 1050000,
-    maxTokens: 128000,
-  },
 ];
 
 export function normalizeDatabricksHost(host: string | undefined): string | undefined {
