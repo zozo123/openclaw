@@ -18,8 +18,9 @@ OpenClaw can use Databricks model services through the unified MLflow Chat Compl
 | Default model | `databricks/system.ai.claude-sonnet-4-5`   |
 
 Databricks model services use fully qualified Unity Catalog names such as
-`system.ai.claude-sonnet-4-5` and `system.ai.gpt-5-6-sol`. Custom model
-services can be selected by their fully qualified name as well.
+`system.ai.claude-sonnet-4-5`. Other system or custom model services can be
+selected by fully qualified name as well; availability is owned by the target
+Databricks workspace and region.
 
 ## Install
 
