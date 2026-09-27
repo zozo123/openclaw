@@ -185,7 +185,6 @@ existing replay fingerprint is computed. A conflicting
 candidate a verifier received; it does not prove that verification succeeded
 or that two verifier runs were independent.
 
-
 ### Fan out in parallel with structured results
 
 This example launches one researcher per topic, waits for every outcome, then
