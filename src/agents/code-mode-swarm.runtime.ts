@@ -75,7 +75,7 @@ function readOptionalStringOption(
 }
 
 async function runAgentSpawnBridge(params: {
-  runtime: ToolSearchRuntime;
+  runtime: Pick<ToolSearchRuntime, "callExactId">;
   parentToolCallId: string;
   request: PendingBridgeRequest;
   codeModeRunId: string;
