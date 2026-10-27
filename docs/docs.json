@@ -1850,6 +1850,7 @@
                           "plugins/knowledge/corrections",
                           "plugins/knowledge/local-history",
                           "plugins/knowledge/maintenance",
+                          "plugins/knowledge/scribes",
                           "plugins/knowledge/control-ui"
                         ]
                       },
@@ -2285,6 +2286,10 @@
                       "providers/xiaomi",
                       "providers/zai"
                     ]
+                  },
+                  {
+                    "group": "Decision models",
+                    "pages": ["providers/liquid-ai"]
                   },
                   {
                     "group": "Speech and audio",
